@@ -1,18 +1,22 @@
 import assert from 'node:assert/strict';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import {
+  copyFile,
   mkdir,
   mkdtemp,
   readFile,
   readdir,
   rm,
+  symlink,
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { buildRelease } from '../scripts/build-release.mjs';
 
+const builderPath = fileURLToPath(new URL('../scripts/build-release.mjs', import.meta.url));
 const expectedFiles = [
   'assets/logo.png',
   'index.html',
@@ -41,21 +45,124 @@ async function listFiles(directory, relativeDirectory = '') {
   return files.sort();
 }
 
-const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'json-unwrapper-release-'));
-after(() => rm(temporaryRoot, { recursive: true, force: true }));
+async function createFixture(t) {
+  const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'json-unwrapper-release-'));
+  t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
 
-test('buildRelease replaces its output with the exact runtime file set', async () => {
-  const outputDirectory = path.join(temporaryRoot, 'nested', 'utools-json-unwrapper');
-  await mkdir(outputDirectory, { recursive: true });
-  await writeFile(path.join(outputDirectory, 'stale.txt'), 'remove me');
+  const sourceDirectory = path.join(temporaryRoot, 'project');
+  const sourceBytes = new Map();
+  for (const relativePath of expectedFiles) {
+    const bytes = Buffer.from(relativePath === 'plugin.json'
+      ? JSON.stringify({ main: 'index.html', logo: 'assets/logo.png' })
+      : `fixture:${relativePath}`);
+    sourceBytes.set(relativePath, bytes);
+    const sourcePath = path.join(sourceDirectory, relativePath);
+    await mkdir(path.dirname(sourcePath), { recursive: true });
+    await writeFile(sourcePath, bytes);
+  }
+  await writeFile(path.join(sourceDirectory, 'sentinel.txt'), 'source-is-intact');
 
-  await buildRelease({ outputDirectory });
+  return { temporaryRoot, sourceDirectory, sourceBytes };
+}
 
+async function assertSourceIsIntact(fixture) {
+  assert.equal(
+    await readFile(path.join(fixture.sourceDirectory, 'sentinel.txt'), 'utf8'),
+    'source-is-intact',
+  );
+  for (const [relativePath, expectedBytes] of fixture.sourceBytes) {
+    assert.deepEqual(
+      await readFile(path.join(fixture.sourceDirectory, relativePath)),
+      expectedBytes,
+    );
+  }
+}
+
+async function assertUnsafeOutputIsRejected(
+  fixture,
+  outputDirectory,
+  sourceDirectory = fixture.sourceDirectory,
+) {
+  await assert.rejects(
+    buildRelease({ sourceDirectory, outputDirectory }),
+  );
+  await assertSourceIsIntact(fixture);
+}
+
+async function assertReleaseFiles(sourceDirectory, outputDirectory) {
   assert.deepEqual(await listFiles(outputDirectory), expectedFiles);
+  for (const relativePath of expectedFiles) {
+    assert.deepEqual(
+      await readFile(path.join(outputDirectory, relativePath)),
+      await readFile(path.join(sourceDirectory, relativePath)),
+    );
+  }
 
   const manifest = JSON.parse(
     await readFile(path.join(outputDirectory, 'plugin.json'), 'utf8'),
   );
-  assert.ok((await listFiles(outputDirectory)).includes(manifest.main));
-  assert.ok((await listFiles(outputDirectory)).includes(manifest.logo));
+  assert.ok(expectedFiles.includes(manifest.main));
+  assert.ok(expectedFiles.includes(manifest.logo));
+}
+
+test('buildRelease replaces a safe external output with exact runtime files', async (t) => {
+  const fixture = await createFixture(t);
+  const outputDirectory = path.join(fixture.temporaryRoot, 'external', 'release');
+  await mkdir(outputDirectory, { recursive: true });
+  await writeFile(path.join(outputDirectory, 'stale.txt'), 'remove me');
+
+  await buildRelease({ sourceDirectory: fixture.sourceDirectory, outputDirectory });
+
+  await assertReleaseFiles(fixture.sourceDirectory, outputDirectory);
+});
+
+test('buildRelease allows its safe default output inside a fake project', async (t) => {
+  const fixture = await createFixture(t);
+  const fixtureBuilderPath = path.join(fixture.sourceDirectory, 'scripts', 'build-release.mjs');
+  await mkdir(path.dirname(fixtureBuilderPath), { recursive: true });
+  await copyFile(builderPath, fixtureBuilderPath);
+  const fixtureBuilder = await import(
+    `${pathToFileURL(fixtureBuilderPath).href}?fixture=${Date.now()}`
+  );
+
+  const result = await fixtureBuilder.buildRelease();
+
+  await assertReleaseFiles(fixture.sourceDirectory, result.outputDirectory);
+});
+
+test('buildRelease rejects output equal to its source before deletion', async (t) => {
+  const fixture = await createFixture(t);
+  await assertUnsafeOutputIsRejected(fixture, fixture.sourceDirectory);
+});
+
+test('buildRelease rejects an ancestor of its source before deletion', async (t) => {
+  const fixture = await createFixture(t);
+  await assertUnsafeOutputIsRejected(fixture, fixture.temporaryRoot);
+});
+
+test('buildRelease rejects a runtime input directory before deletion', async (t) => {
+  const fixture = await createFixture(t);
+  await assertUnsafeOutputIsRejected(
+    fixture,
+    path.join(fixture.sourceDirectory, 'src'),
+  );
+});
+
+test('buildRelease rejects a symlink alias to a runtime input directory', async (t) => {
+  const fixture = await createFixture(t);
+  const sourceAlias = path.join(fixture.temporaryRoot, 'project-alias');
+  const outputAlias = path.join(fixture.temporaryRoot, 'source-alias');
+  await symlink(fixture.sourceDirectory, sourceAlias, 'dir');
+  await symlink(path.join(fixture.sourceDirectory, 'src'), outputAlias, 'dir');
+
+  await assertUnsafeOutputIsRejected(fixture, outputAlias, sourceAlias);
+  assert.equal(await readFile(path.join(outputAlias, 'app.js'), 'utf8'), 'fixture:src/app.js');
+});
+
+test('buildRelease rejects filesystem roots before deletion', async (t) => {
+  const fixture = await createFixture(t);
+  await assertUnsafeOutputIsRejected(
+    fixture,
+    path.parse(fixture.sourceDirectory).root,
+  );
 });

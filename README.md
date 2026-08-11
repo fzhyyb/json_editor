@@ -58,10 +58,10 @@ npm test
 npm run build:release
 ```
 
-该命令会替换 `release/utools-json-unwrapper`，并只放入 `plugin.json`、页面、样式、运行时 JavaScript 和 PNG Logo，不包含测试、开发文档或 SVG 源文件。在 uTools 开发者工具中选择 `release/utools-json-unwrapper/plugin.json`，确认版本号为 `1.0.0`，再按“打包为离线安装包”流程生成 UPXS。安装该离线包，完成目标平台的基本冒烟测试后再提交发布。
+该命令会替换 `release/utools-json-unwrapper`，并只放入 `plugin.json`、页面、样式、运行时 JavaScript 和 PNG Logo，不包含测试、开发文档、SVG 源文件或 `package.json`。`package.json` 中的 `1.0.0` 仅是源码包的参考版本，发布目录本身不嵌入版本号。在 uTools 开发者工具中选择 `release/utools-json-unwrapper/plugin.json`，在打包步骤手动设置并确认 UPXS 版本，再按“打包为离线安装包”流程生成 UPXS。安装该离线包，完成目标平台的基本冒烟测试后再提交发布。
 
 ## 发布到应用市场
 
-应用名称、简介、首版说明、截图方案和提交检查项见 [`docs/marketplace.md`](docs/marketplace.md)。发布前重新运行 `npm run build:release`，在 uTools 开发者工具中选择 `release/utools-json-unwrapper` 目录，准备 Logo、介绍、版本说明、用户手册和截图，填写发布信息并提交审核；只有审核通过后，插件才会进入应用市场。
+应用名称、简介、首版说明、截图方案和提交检查项见 [`docs/marketplace.md`](docs/marketplace.md)。发布前重新运行 `npm run build:release`，在 uTools 开发者工具中选择 `release/utools-json-unwrapper` 目录，手动设置并确认本次应用市场版本，准备 Logo、介绍、版本说明、用户手册和截图，填写发布信息并提交审核；只有审核通过后，插件才会进入应用市场。
 
 隐私说明见 [`docs/privacy.md`](docs/privacy.md)。

@@ -1,4 +1,11 @@
-import { access, copyFile, mkdir, readFile, rm } from 'node:fs/promises';
+import {
+  access,
+  copyFile,
+  mkdir,
+  readFile,
+  realpath,
+  rm,
+} from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,16 +32,53 @@ function resolveManifestPath(outputDirectory, manifestPath, field) {
   return resolvedPath;
 }
 
+function isSameOrAncestor(candidate, target) {
+  return candidate === target || target.startsWith(`${candidate}${path.sep}`);
+}
+
+async function canonicalizeRequestedPath(requestedPath) {
+  let existingAncestor = path.resolve(requestedPath);
+  const missingSegments = [];
+
+  while (true) {
+    try {
+      const canonicalAncestor = await realpath(existingAncestor);
+      return path.join(canonicalAncestor, ...missingSegments);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      const parent = path.dirname(existingAncestor);
+      if (parent === existingAncestor) throw error;
+      missingSegments.unshift(path.basename(existingAncestor));
+      existingAncestor = parent;
+    }
+  }
+}
+
+async function validateOutputPath(sourceRoot, outputRoot) {
+  if (path.parse(outputRoot).root === outputRoot) {
+    throw new Error('Release output directory must not be a filesystem root');
+  }
+  if (isSameOrAncestor(outputRoot, sourceRoot)) {
+    throw new Error('Release output directory must not contain the source directory');
+  }
+
+  for (const relativePath of runtimeFiles) {
+    const inputPath = await realpath(path.join(sourceRoot, relativePath));
+    if (isSameOrAncestor(outputRoot, inputPath)) {
+      throw new Error(`Release output directory must not contain runtime input ${relativePath}`);
+    }
+  }
+}
+
 export async function buildRelease({
   sourceDirectory = projectRoot,
-  outputDirectory = path.join(projectRoot, 'release', 'utools-json-unwrapper'),
+  outputDirectory,
 } = {}) {
-  const sourceRoot = path.resolve(sourceDirectory);
-  const outputRoot = path.resolve(outputDirectory);
-
-  if (sourceRoot === outputRoot) {
-    throw new Error('Release output directory must differ from the source directory');
-  }
+  const sourceRoot = await realpath(path.resolve(sourceDirectory));
+  const requestedOutput = outputDirectory
+    ?? path.join(sourceRoot, 'release', 'utools-json-unwrapper');
+  const outputRoot = await canonicalizeRequestedPath(requestedOutput);
+  await validateOutputPath(sourceRoot, outputRoot);
 
   await rm(outputRoot, { recursive: true, force: true });
 
