@@ -20,6 +20,9 @@ test('copied-text command matches JSON container starts but rejects unrelated te
   const feature = manifest.features.find(({ code }) => code === 'json-unwrapper');
   const command = feature.cmds.find((item) => typeof item === 'object');
 
+  assert.ok(feature.cmds.includes('JSON 编辑器'));
+  assert.ok(feature.cmds.includes('JSON 格式化'));
+
   assert.deepEqual(
     {
       type: command.type,
@@ -29,7 +32,7 @@ test('copied-text command matches JSON container starts but rejects unrelated te
     },
     {
       type: 'regex',
-      label: '递归解构 JSON',
+      label: '使用 JSON 编辑器打开',
       minLength: 2,
       maxLength: Number.MAX_SAFE_INTEGER,
     },

@@ -51,6 +51,20 @@ test('repairs unsupported escapes while expanding nested JSON strings', () => {
   assert.deepEqual(result.warnings, []);
 });
 
+test('does not repair malformed Unicode escape prefixes', () => {
+  assert.throws(
+    () => unwrapJsonText(String.raw`{"value":"\uZZZZ"}`),
+    (error) => error instanceof JsonInputError && error.code === 'INVALID_OUTER_JSON',
+  );
+
+  const nested = String.raw`{"value":"\uZZZZ"}`;
+  const result = unwrapJsonText(JSON.stringify({ payload: nested }));
+  assert.equal(result.value.payload, nested);
+  assert.deepEqual(result.warnings.map(({ code, path }) => ({ code, path })), [
+    { code: 'INVALID_NESTED_JSON', path: '$.payload' },
+  ]);
+});
+
 test('keeps all valid JSON escape sequences unchanged', () => {
   const expected = {
     quote: '"',

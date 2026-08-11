@@ -46,15 +46,14 @@ function repairUnsupportedJsonEscapes(text) {
 
     const nextCharacter = text[index + 1];
     const isSimpleEscape = '"\\/bfnrt'.includes(nextCharacter);
-    const isUnicodeEscape = nextCharacter === 'u'
-      && /^[0-9a-fA-F]{4}$/.test(text.slice(index + 2, index + 6));
-
     if (isSimpleEscape) {
       index += 1;
       continue;
     }
-    if (isUnicodeEscape) {
-      index += 5;
+    if (nextCharacter === 'u') {
+      // Unicode escapes are part of JSON itself. Preserve both valid and
+      // malformed forms so the strict retry below remains authoritative.
+      index += 1;
       continue;
     }
 
@@ -71,7 +70,7 @@ function repairUnsupportedJsonEscapes(text) {
   return chunks.join('');
 }
 
-function parseJson(text) {
+export function parseJsonValue(text) {
   try {
     return JSON.parse(text);
   } catch (strictError) {
@@ -81,6 +80,16 @@ function parseJson(text) {
     }
     return JSON.parse(repaired);
   }
+}
+
+export function serializeJsonValue(
+  value,
+  { pretty = true, prettyDepth = Number.MAX_SAFE_INTEGER } = {},
+) {
+  if (!Number.isInteger(prettyDepth) || prettyDepth < 0) {
+    throw new TypeError('prettyDepth 必须是非负整数');
+  }
+  return stringifyJson(value, pretty ? prettyDepth : 0);
 }
 
 function childPath(parent, key, isArray) {
@@ -163,7 +172,7 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
 
   let parsed;
   try {
-    parsed = parseJson(input);
+    parsed = parseJsonValue(input);
   } catch (error) {
     throw new JsonInputError(
       'INVALID_OUTER_JSON',
@@ -182,7 +191,7 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
     }
 
     try {
-      parsed = parseJson(parsed);
+      parsed = parseJsonValue(parsed);
       expandedCount += 1;
     } catch (error) {
       throw new JsonInputError(
@@ -213,7 +222,7 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
     if (isCandidate) {
       let nested;
       try {
-        nested = parseJson(value);
+        nested = parseJsonValue(value);
       } catch {
         warnings.push({
           code: 'INVALID_NESTED_JSON',
@@ -251,7 +260,7 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
   const value = visit(parsed, '$', 0);
   return {
     value,
-    text: stringifyJson(value, maxDepth),
+    text: serializeJsonValue(value, { prettyDepth: maxDepth }),
     expandedCount,
     warnings,
   };

@@ -1,170 +1,214 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-class FakeElement {
-  constructor() {
-    this.listeners = new Map();
-    this.dataset = {};
-    this.reset();
-  }
+import { createWorkbenchController } from '../src/workbench-controller.js';
 
-  reset() {
-    this.textContent = '';
-    this.value = '';
-    this.hidden = false;
-    this.disabled = false;
-    this.children = [];
-    this.dataset = {};
-  }
-
-  addEventListener(type, callback) {
-    this.listeners.set(type, callback);
-  }
-
-  dispatch(type, event = {}) {
-    return this.listeners.get(type)?.(event);
-  }
-
-  replaceChildren(...children) {
-    this.children = children;
-  }
-
-  focus() {
-    document.activeElement = this;
-  }
+function createFakeEditor() {
+  return {
+    text: '',
+    selection: { from: 0, to: 0 },
+    replacements: [],
+    calls: [],
+    getText() {
+      return this.text;
+    },
+    getSelection() {
+      return this.selection;
+    },
+    replaceDocument(text, selection = { from: text.length, to: text.length }) {
+      this.text = text;
+      this.selection = selection;
+      this.replacements.push({ text, selection });
+    },
+    focus() {
+      this.calls.push('focus');
+    },
+    foldAll() {
+      this.calls.push('foldAll');
+    },
+    unfoldAll() {
+      this.calls.push('unfoldAll');
+    },
+    openSearch() {
+      this.calls.push('openSearch');
+    },
+  };
 }
 
-const ids = [
-  'source',
-  'result',
-  'status',
-  'run-button',
-  'copy-button',
-  'clear-button',
-  'warning-panel',
-  'warnings',
-];
-const elements = Object.fromEntries(ids.map((id) => [id, new FakeElement()]));
-
-globalThis.document = {
-  activeElement: null,
-  querySelector(selector) {
-    return elements[selector.slice(1)];
-  },
-  createElement() {
-    return new FakeElement();
-  },
-  addEventListener() {},
-};
-
-let copyImplementation = () => false;
-globalThis.utools = {
-  onPluginEnter() {},
-  copyText(text) {
-    return copyImplementation(text);
-  },
-};
-
-await import('../src/app.js');
+let editor;
+let clipboard;
+let statuses;
+let warningSets;
+let validities;
+let metadata;
+let controller;
 
 beforeEach(() => {
-  for (const element of Object.values(elements)) element.reset();
-  elements['copy-button'].disabled = true;
-  document.activeElement = null;
-  copyImplementation = () => false;
+  editor = createFakeEditor();
+  clipboard = [];
+  statuses = [];
+  warningSets = [];
+  validities = [];
+  metadata = [];
+  controller = createWorkbenchController({
+    editor,
+    adapter: {
+      copyText(text) {
+        clipboard.push(text);
+        return true;
+      },
+    },
+    setStatus(message, kind) {
+      statuses.push({ message, kind });
+    },
+    setWarnings(items) {
+      warningSets.push(items);
+    },
+    setValidity(label, kind) {
+      validities.push({ label, kind });
+    },
+    setMetadata(value) {
+      metadata.push(value);
+    },
+  });
 });
 
-test('parsing and copying are separate actions', () => {
-  let copyCalls = 0;
-  copyImplementation = () => {
-    copyCalls += 1;
-    return true;
-  };
-  elements.source.value = JSON.stringify({ data: JSON.stringify({ id: 1 }) });
+test('recursive parse replaces the document without copying', () => {
+  editor.text = JSON.stringify({ payload: JSON.stringify({ id: 1 }) });
 
-  elements['run-button'].dispatch('click');
+  assert.equal(controller.parse(), true);
 
-  assert.equal(copyCalls, 0);
-  assert.equal(elements.result.textContent, JSON.stringify({ data: { id: 1 } }, null, 2));
-  assert.equal(elements.status.textContent, '已展开 1 个字段');
-  assert.equal(elements.status.dataset.kind, 'success');
-  assert.equal(elements['copy-button'].disabled, false);
-
-  elements['copy-button'].dispatch('click');
-
-  assert.equal(copyCalls, 1);
-  assert.equal(elements.status.textContent, '已复制结果');
-  assert.equal(elements.status.dataset.kind, 'success');
+  assert.equal(editor.text, JSON.stringify({ payload: { id: 1 } }, null, 2));
+  assert.equal(clipboard.length, 0);
+  assert.deepEqual(statuses.at(-1), { message: '已展开 1 个嵌套字段', kind: 'success' });
+  assert.deepEqual(warningSets.at(-1), []);
 });
 
-test('clipboard exceptions only affect an explicit copy action', () => {
-  copyImplementation = () => {
-    throw new Error('clipboard unavailable');
-  };
-  elements.source.value = JSON.stringify({ data: JSON.stringify({ id: 1 }) });
+test('uTools text entry automatically recursively parses the payload', () => {
+  const payload = JSON.stringify({ data: JSON.stringify([1, 2]) });
 
-  assert.doesNotThrow(() => elements['run-button'].dispatch('click'));
-  assert.equal(elements.result.textContent, JSON.stringify({ data: { id: 1 } }, null, 2));
-  assert.equal(elements.status.textContent, '已展开 1 个字段');
-  assert.equal(elements.status.dataset.kind, 'success');
+  assert.equal(controller.handleTextEntry(payload), true);
 
-  assert.doesNotThrow(() => elements['copy-button'].dispatch('click'));
-  assert.equal(elements.status.textContent, '复制失败，请手动复制结果');
-  assert.equal(elements.status.dataset.kind, 'warning');
+  assert.equal(editor.text, JSON.stringify({ data: [1, 2] }, null, 2));
+  assert.equal(clipboard.length, 0);
+  assert.deepEqual(editor.selection, { from: 0, to: 0 });
 });
 
-test('outer parse errors preserve the previous result and its warnings', () => {
-  elements.source.value = JSON.stringify({ payload: '{broken}' });
-  elements['run-button'].dispatch('click');
+test('full-document paste is intercepted and automatically parsed', () => {
+  const payload = JSON.stringify({ data: JSON.stringify({ ok: true }) });
+  editor.text = 'replace me';
+  editor.selection = { from: 0, to: editor.text.length };
 
-  const previousResult = elements.result.textContent;
-  assert.equal(elements['warning-panel'].hidden, false);
-  assert.deepEqual(
-    elements.warnings.children.map((item) => item.textContent),
-    ['$.payload：疑似 JSON 的字符串无法解析'],
-  );
-
-  elements.source.value = '{broken';
-  elements['run-button'].dispatch('click');
-
-  assert.equal(elements.result.textContent, previousResult);
-  assert.equal(elements['copy-button'].disabled, false);
-  assert.equal(elements['warning-panel'].hidden, false);
-  assert.deepEqual(
-    elements.warnings.children.map((item) => item.textContent),
-    ['$.payload：疑似 JSON 的字符串无法解析'],
-  );
-  assert.match(elements.status.textContent, /^外层 JSON 解析失败：/);
-  assert.equal(elements.status.dataset.kind, 'error');
+  assert.equal(controller.handlePaste(payload), true);
+  assert.equal(editor.text, JSON.stringify({ data: { ok: true } }, null, 2));
+  assert.deepEqual(editor.selection, { from: 0, to: 0 });
 });
 
-test('successful parsing still announces incomplete expansion as a warning without copying', () => {
-  let copyCalls = 0;
-  copyImplementation = () => {
-    copyCalls += 1;
-    return true;
-  };
-  const input = {
-    data: JSON.stringify({ id: 1 }),
-    payload: '{broken}',
-  };
-  elements.source.value = JSON.stringify(input);
+test('default whole-document paste can be parsed after clipboardData is unavailable', () => {
+  const payload = JSON.stringify(JSON.stringify({
+    task_id: '7672091721177517688',
+    form_ai_context: JSON.stringify({ service: 'ark' }),
+  }));
+  editor.text = payload;
+  editor.selection = { from: payload.length, to: payload.length };
 
-  elements['run-button'].dispatch('click');
+  assert.equal(controller.handlePastedDocument(payload), true);
+  assert.equal(editor.text, JSON.stringify({
+    task_id: '7672091721177517688',
+    form_ai_context: { service: 'ark' },
+  }, null, 2));
+  assert.deepEqual(editor.selection, { from: 0, to: 0 });
+});
 
-  assert.equal(
-    elements.result.textContent,
-    JSON.stringify({ data: { id: 1 }, payload: '{broken}' }, null, 2),
-  );
-  assert.equal(
-    elements.status.textContent,
-    '已展开 1 个字段，其中 1 个路径未能完全展开',
-  );
-  assert.equal(copyCalls, 0);
-  assert.equal(elements.status.dataset.kind, 'warning');
-  assert.equal(elements['warning-panel'].hidden, false);
-  assert.deepEqual(
-    elements.warnings.children.map((item) => item.textContent),
-    ['$.payload：疑似 JSON 的字符串无法解析'],
-  );
+test('partial paste and invalid whole-document paste fall through unchanged', () => {
+  editor.text = '{"a":1}';
+  editor.selection = { from: 2, to: 2 };
+
+  assert.equal(controller.handlePaste('{"b":2}'), false);
+  assert.equal(editor.text, '{"a":1}');
+
+  editor.selection = { from: 0, to: editor.text.length };
+  assert.equal(controller.handlePaste('{broken'), false);
+  assert.equal(editor.text, '{"a":1}');
+});
+
+test('format and minify transform the document without recursive expansion', () => {
+  const nested = JSON.stringify({ id: 1 });
+  editor.text = JSON.stringify({ payload: nested });
+
+  assert.equal(controller.format(), true);
+  assert.equal(editor.text, JSON.stringify({ payload: nested }, null, 2));
+
+  assert.equal(controller.minify(), true);
+  assert.equal(editor.text, JSON.stringify({ payload: nested }));
+});
+
+test('escape and unescape prefer a non-empty selection', () => {
+  editor.text = 'before {"a":1} after';
+  editor.selection = { from: 7, to: 14 };
+
+  assert.equal(controller.escape(), true);
+  assert.equal(editor.text, 'before "{\\"a\\":1}" after');
+  assert.deepEqual(editor.selection, { from: 7, to: 18 });
+
+  assert.equal(controller.unescape(), true);
+  assert.equal(editor.text, 'before {"a":1} after');
+  assert.deepEqual(editor.selection, { from: 7, to: 14 });
+});
+
+test('folding and search delegate to the editor adapter', () => {
+  controller.foldAll();
+  controller.unfoldAll();
+  controller.search();
+
+  assert.deepEqual(editor.calls, ['foldAll', 'unfoldAll', 'openSearch']);
+});
+
+test('copy is explicit and clear resets the workbench', () => {
+  editor.text = '{"ok":true}';
+
+  assert.equal(controller.copy(), true);
+  assert.deepEqual(clipboard, ['{"ok":true}']);
+
+  controller.clear();
+  assert.equal(editor.text, '');
+  assert.deepEqual(warningSets.at(-1), []);
+  assert.deepEqual(editor.calls, ['focus']);
+  assert.deepEqual(statuses.at(-1), { message: '已清空，等待粘贴 JSON', kind: 'neutral' });
+});
+
+test('failed transforms preserve the document and expose an error', () => {
+  editor.text = '{broken';
+
+  assert.equal(controller.format(), false);
+  assert.equal(controller.parse(), false);
+  assert.equal(editor.text, '{broken');
+  assert.equal(editor.replacements.length, 0);
+  assert.equal(statuses.at(-1).kind, 'error');
+});
+
+test('editor updates report metadata while validation is a separate operation', () => {
+  controller.handleEditorUpdate({
+    line: 3,
+    column: 7,
+    lines: 12,
+    characters: 2048,
+    bytes: 2050,
+  });
+  assert.equal(validities.length, 0);
+  controller.validate('{"ok":true}');
+  assert.deepEqual(validities.at(-1), { label: 'JSON 有效', kind: 'valid' });
+  assert.deepEqual(metadata.at(-1), {
+    line: 3,
+    column: 7,
+    lines: 12,
+    characters: 2048,
+    bytes: 2050,
+  });
+
+  controller.validate('{broken');
+  assert.deepEqual(validities.at(-1), { label: 'JSON 无效', kind: 'invalid' });
+
+  controller.validate('');
+  assert.deepEqual(validities.at(-1), { label: '等待输入', kind: 'neutral' });
 });

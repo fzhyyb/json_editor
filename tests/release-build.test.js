@@ -19,16 +19,15 @@ import { buildRelease } from '../scripts/build-release.mjs';
 const builderPath = fileURLToPath(new URL('../scripts/build-release.mjs', import.meta.url));
 const expectedFiles = [
   'assets/logo.png',
+  'dist/app.js',
   'index.html',
   'plugin.json',
-  'src/app.js',
-  'src/json-unwrapper.js',
-  'src/utools-adapter.js',
   'styles.css',
 ];
 const protectedFixtureFiles = [
   'docs/sentinel.txt',
   'scripts/sentinel.txt',
+  'src/sentinel.txt',
   'tests/sentinel.txt',
 ];
 

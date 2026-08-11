@@ -4,8 +4,22 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
-    "build:release": "node scripts/build-release.mjs"
+    "test": "node --test tests/app.test.js tests/editor-operations.test.js tests/editor-view.test.js tests/json-unwrapper.test.js tests/plugin-manifest.test.js tests/release-build.test.js tests/ui-structure.test.js tests/utools-adapter.test.js",
+    "build:app": "node scripts/build-app.mjs",
+    "build:release": "npm run build:app && node scripts/build-release.mjs"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@codemirror/commands": "6.10.4",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/search": "6.7.1",
+    "@codemirror/state": "6.7.1",
+    "@codemirror/view": "6.43.8",
+    "codemirror": "6.0.2",
+    "esbuild": "0.28.2"
+  }
 }

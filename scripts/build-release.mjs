@@ -14,9 +14,7 @@ const runtimeFiles = [
   'plugin.json',
   'index.html',
   'styles.css',
-  'src/app.js',
-  'src/json-unwrapper.js',
-  'src/utools-adapter.js',
+  'dist/app.js',
   'assets/logo.png',
 ];
 

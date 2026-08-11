@@ -1,3 +1,7 @@
 .superpowers/
 .worktrees/
+.DS_Store
+node_modules/
 release/
+dist/
+outputs/

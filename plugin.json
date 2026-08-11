@@ -7,13 +7,15 @@
   "features": [
     {
       "code": "json-unwrapper",
-      "explain": "递归展开被转义的 JSON 对象和数组",
+      "explain": "格式化、编辑并递归展开 JSON",
       "cmds": [
+        "JSON 编辑器",
+        "JSON 格式化",
         "JSON 解构",
         "递归解析 JSON",
         {
           "type": "regex",
-          "label": "递归解构 JSON",
+          "label": "使用 JSON 编辑器打开",
           "match": "/^\\s*(?:\\\\*\")*[\\[{]/",
           "minLength": 2,
           "maxLength": 9007199254740991
