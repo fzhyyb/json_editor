@@ -93,8 +93,8 @@ function stringifyJson(value, prettyDepth) {
 }
 
 export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
-  if (!Number.isInteger(maxDepth) || maxDepth < 0) {
-    throw new TypeError('maxDepth 必须是非负整数');
+  if (!Number.isInteger(maxDepth) || maxDepth < 0 || maxDepth > 100) {
+    throw new TypeError('maxDepth 必须是 0 到 100 之间的整数');
   }
 
   let parsed;

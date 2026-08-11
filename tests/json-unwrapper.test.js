@@ -189,6 +189,22 @@ test('serializes a retained 12,000-level array subtree without recursive overflo
   assert.equal(serializedCursor, 1);
 });
 
+test('accepts maxDepth at the upper bound of 100', () => {
+  const result = unwrapJsonText('{"ok":true}', { maxDepth: 100 });
+
+  assert.deepEqual(result.value, { ok: true });
+  assert.deepEqual(result.warnings, []);
+});
+
+test('rejects maxDepth values outside the integer range from 0 to 100', () => {
+  for (const maxDepth of [-1, 1.5, '1', 101]) {
+    assert.throws(
+      () => unwrapJsonText('{}', { maxDepth }),
+      (error) => error instanceof TypeError && error.message === 'maxDepth 必须是 0 到 100 之间的整数',
+    );
+  }
+});
+
 test('rejects a top-level valid primitive string', () => {
   assert.throws(
     () => unwrapJsonText('"123"'),
