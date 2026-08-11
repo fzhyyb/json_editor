@@ -35,7 +35,12 @@ test('copied-text command matches JSON container starts but rejects unrelated te
     },
   );
 
-  const matcher = new RegExp(command.match);
+  assert.match(command.match, /^\/.*\/[dgimsuvy]*$/s);
+  const closingSlash = command.match.lastIndexOf('/');
+  assert.ok(closingSlash > 0);
+  const source = command.match.slice(1, closingSlash);
+  const flags = command.match.slice(closingSlash + 1);
+  const matcher = new RegExp(source, flags);
   const directObject = JSON.stringify({ value: 1 });
   const directArray = JSON.stringify([1, 2]);
   const oneLayerStringifiedObject = JSON.stringify(directObject);

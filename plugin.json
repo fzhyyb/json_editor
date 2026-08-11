@@ -14,7 +14,7 @@
         {
           "type": "regex",
           "label": "递归解构 JSON",
-          "match": "^\\s*(?:\\\\*\")*[\\[{]",
+          "match": "/^\\s*(?:\\\\*\")*[\\[{]/",
           "minLength": 2,
           "maxLength": 100000
         }
