@@ -61,9 +61,12 @@ function processSource() {
     const detail = unwrapped.expandedCount === 0
       ? '未发现可展开的嵌套 JSON 字符串'
       : `已展开 ${unwrapped.expandedCount} 个字段`;
+    const warningDetail = unwrapped.warnings.length > 0
+      ? `，其中 ${unwrapped.warnings.length} 个路径未能完全展开`
+      : '';
     setStatus(
-      `${detail}${copied ? '，已复制' : '，请手动复制'}`,
-      copied ? 'success' : 'warning',
+      `${detail}${warningDetail}${copied ? '，已复制' : '，请手动复制'}`,
+      unwrapped.warnings.length > 0 || !copied ? 'warning' : 'success',
     );
   } catch (error) {
     const message = error instanceof JsonInputError

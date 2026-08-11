@@ -114,3 +114,29 @@ test('outer parse errors preserve the previous result and its warnings', () => {
   assert.match(elements.status.textContent, /^外层 JSON 解析失败：/);
   assert.equal(elements.status.dataset.kind, 'error');
 });
+
+test('successful copying still announces incomplete expansion as a warning', () => {
+  copyImplementation = () => true;
+  const input = {
+    data: JSON.stringify({ id: 1 }),
+    payload: '{broken}',
+  };
+  elements.source.value = JSON.stringify(input);
+
+  elements['run-button'].dispatch('click');
+
+  assert.equal(
+    elements.result.textContent,
+    JSON.stringify({ data: { id: 1 }, payload: '{broken}' }, null, 2),
+  );
+  assert.equal(
+    elements.status.textContent,
+    '已展开 1 个字段，其中 1 个路径未能完全展开，已复制',
+  );
+  assert.equal(elements.status.dataset.kind, 'warning');
+  assert.equal(elements['warning-panel'].hidden, false);
+  assert.deepEqual(
+    elements.warnings.children.map((item) => item.textContent),
+    ['$.payload：疑似 JSON 的字符串无法解析'],
+  );
+});
