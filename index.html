@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>JSON 解构</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="toolbar">
+        <div class="title-block">
+          <h1>JSON 解构</h1>
+          <p id="status" role="status">粘贴 JSON 后开始处理</p>
+        </div>
+        <div class="actions">
+          <button id="clear-button" class="secondary" type="button">清空</button>
+          <button id="copy-button" class="secondary" type="button" disabled>复制结果</button>
+          <button id="run-button" type="button">解构并复制</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <article class="pane">
+          <label class="pane-label" for="source">原始 JSON</label>
+          <textarea
+            id="source"
+            spellcheck="false"
+            placeholder='例如：{&quot;data&quot;:&quot;{\&quot;name\&quot;:\&quot;小明\&quot;}&quot;}'
+          ></textarea>
+        </article>
+
+        <article class="pane">
+          <div class="pane-label">解构结果</div>
+          <pre id="result" tabindex="0" aria-label="解构结果"></pre>
+        </article>
+      </section>
+
+      <aside id="warning-panel" class="warning-panel" hidden>
+        <strong>以下路径未能完全展开</strong>
+        <ul id="warnings"></ul>
+      </aside>
+    </main>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

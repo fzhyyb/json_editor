@@ -1,0 +1,241 @@
+:root {
+  color-scheme: light dark;
+  --background: #f4f6fa;
+  --surface: #fff;
+  --border: #d9deea;
+  --text: #172033;
+  --muted: #667085;
+  --primary: #5b5bd6;
+  --primary-hover: #4747bd;
+  --success: #14804a;
+  --warning: #a15c00;
+  --warning-bg: #fff7e6;
+  --error: #c4320a;
+  --focus: #7f7ff0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #11141b;
+    --surface: #1b202b;
+    --border: #343b4a;
+    --text: #f1f4f9;
+    --muted: #a9b1c1;
+    --primary: #8585ef;
+    --primary-hover: #9b9bf4;
+    --success: #57c78b;
+    --warning: #f4b860;
+    --warning-bg: #302617;
+    --error: #ff8a65;
+    --focus: #a5a5ff;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 360px;
+  background: var(--background);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+button {
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease,
+    color 140ms ease, opacity 140ms ease;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+}
+
+button.secondary {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+button.secondary:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: transparent;
+  color: var(--primary);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+pre:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus) 48%, transparent);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 18px 20px 20px;
+}
+
+.toolbar {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title-block {
+  min-width: 0;
+}
+
+h1 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+#status {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+#status[data-kind="success"] {
+  color: var(--success);
+}
+
+#status[data-kind="warning"] {
+  color: var(--warning);
+}
+
+#status[data-kind="error"] {
+  color: var(--error);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.pane {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.pane-label {
+  display: block;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+textarea,
+pre {
+  display: block;
+  width: 100%;
+  min-height: 360px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre;
+}
+
+textarea {
+  resize: vertical;
+  outline: none;
+}
+
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.72;
+}
+
+.warning-panel {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--warning) 42%, var(--border));
+  border-radius: 10px;
+  background: var(--warning-bg);
+  color: var(--warning);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.warning-panel ul {
+  margin: 7px 0 0;
+  padding-left: 20px;
+}
+
+.warning-panel li + li {
+  margin-top: 3px;
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 12px;
+  }
+
+  .toolbar {
+    min-height: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-bottom: 12px;
+  }
+
+  .actions {
+    justify-content: flex-start;
+  }
+
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  textarea,
+  pre {
+    min-height: 260px;
+  }
+}
