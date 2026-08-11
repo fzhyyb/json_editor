@@ -61,6 +61,16 @@ async function validateOutputPath(sourceRoot, outputRoot) {
   if (isSameOrAncestor(outputRoot, sourceRoot)) {
     throw new Error('Release output directory must not contain the source directory');
   }
+  if (isSameOrAncestor(sourceRoot, outputRoot)) {
+    const releaseRoot = await canonicalizeRequestedPath(
+      path.join(sourceRoot, 'release'),
+    );
+    if (outputRoot === releaseRoot || !isSameOrAncestor(releaseRoot, outputRoot)) {
+      throw new Error(
+        'Release output inside the source must be a child of the release directory',
+      );
+    }
+  }
 
   for (const relativePath of runtimeFiles) {
     const inputPath = await realpath(path.join(sourceRoot, relativePath));

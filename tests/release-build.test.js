@@ -26,6 +26,11 @@ const expectedFiles = [
   'src/utools-adapter.js',
   'styles.css',
 ];
+const protectedFixtureFiles = [
+  'docs/sentinel.txt',
+  'scripts/sentinel.txt',
+  'tests/sentinel.txt',
+];
 
 async function listFiles(directory, relativeDirectory = '') {
   const entries = await readdir(path.join(directory, relativeDirectory), {
@@ -55,6 +60,13 @@ async function createFixture(t) {
     const bytes = Buffer.from(relativePath === 'plugin.json'
       ? JSON.stringify({ main: 'index.html', logo: 'assets/logo.png' })
       : `fixture:${relativePath}`);
+    sourceBytes.set(relativePath, bytes);
+    const sourcePath = path.join(sourceDirectory, relativePath);
+    await mkdir(path.dirname(sourcePath), { recursive: true });
+    await writeFile(sourcePath, bytes);
+  }
+  for (const relativePath of protectedFixtureFiles) {
+    const bytes = Buffer.from(`fixture:${relativePath}`);
     sourceBytes.set(relativePath, bytes);
     const sourcePath = path.join(sourceDirectory, relativePath);
     await mkdir(path.dirname(sourcePath), { recursive: true });
@@ -130,6 +142,17 @@ test('buildRelease allows its safe default output inside a fake project', async 
   await assertReleaseFiles(fixture.sourceDirectory, result.outputDirectory);
 });
 
+test('buildRelease allows a named app strictly inside source release directory', async (t) => {
+  const fixture = await createFixture(t);
+  const outputDirectory = path.join(fixture.sourceDirectory, 'release', 'app');
+  await mkdir(outputDirectory, { recursive: true });
+  await writeFile(path.join(outputDirectory, 'stale.txt'), 'remove me');
+
+  await buildRelease({ sourceDirectory: fixture.sourceDirectory, outputDirectory });
+
+  await assertReleaseFiles(fixture.sourceDirectory, outputDirectory);
+});
+
 test('buildRelease rejects output equal to its source before deletion', async (t) => {
   const fixture = await createFixture(t);
   await assertUnsafeOutputIsRejected(fixture, fixture.sourceDirectory);
@@ -140,23 +163,55 @@ test('buildRelease rejects an ancestor of its source before deletion', async (t)
   await assertUnsafeOutputIsRejected(fixture, fixture.temporaryRoot);
 });
 
-test('buildRelease rejects a runtime input directory before deletion', async (t) => {
+for (const child of ['scripts', 'docs', 'tests', 'src', 'assets']) {
+  test(`buildRelease rejects source/${child} before deletion`, async (t) => {
+    const fixture = await createFixture(t);
+    await assertUnsafeOutputIsRejected(
+      fixture,
+      path.join(fixture.sourceDirectory, child),
+    );
+  });
+
+  test(`buildRelease rejects a symlink alias to source/${child}`, async (t) => {
+    const fixture = await createFixture(t);
+    const outputAlias = path.join(fixture.temporaryRoot, `${child}-alias`);
+    await symlink(path.join(fixture.sourceDirectory, child), outputAlias, 'dir');
+
+    await assertUnsafeOutputIsRejected(fixture, outputAlias);
+  });
+}
+
+test('buildRelease rejects an arbitrary new source child before creation', async (t) => {
   const fixture = await createFixture(t);
   await assertUnsafeOutputIsRejected(
     fixture,
-    path.join(fixture.sourceDirectory, 'src'),
+    path.join(fixture.sourceDirectory, 'new-output'),
   );
 });
 
-test('buildRelease rejects a symlink alias to a runtime input directory', async (t) => {
+test('buildRelease rejects an aliased arbitrary new source child', async (t) => {
   const fixture = await createFixture(t);
   const sourceAlias = path.join(fixture.temporaryRoot, 'project-alias');
-  const outputAlias = path.join(fixture.temporaryRoot, 'source-alias');
   await symlink(fixture.sourceDirectory, sourceAlias, 'dir');
-  await symlink(path.join(fixture.sourceDirectory, 'src'), outputAlias, 'dir');
 
-  await assertUnsafeOutputIsRejected(fixture, outputAlias, sourceAlias);
-  assert.equal(await readFile(path.join(outputAlias, 'app.js'), 'utf8'), 'fixture:src/app.js');
+  await assertUnsafeOutputIsRejected(
+    fixture,
+    path.join(sourceAlias, 'new-output'),
+    sourceAlias,
+  );
+});
+
+test('buildRelease rejects source/release itself before deletion', async (t) => {
+  const fixture = await createFixture(t);
+  const releaseDirectory = path.join(fixture.sourceDirectory, 'release');
+  await mkdir(releaseDirectory);
+  await writeFile(path.join(releaseDirectory, 'sentinel.txt'), 'release-is-intact');
+
+  await assertUnsafeOutputIsRejected(fixture, releaseDirectory);
+  assert.equal(
+    await readFile(path.join(releaseDirectory, 'sentinel.txt'), 'utf8'),
+    'release-is-intact',
+  );
 });
 
 test('buildRelease rejects filesystem roots before deletion', async (t) => {
