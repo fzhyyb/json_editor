@@ -138,6 +138,7 @@ test('format and minify transform the document without recursive expansion', () 
 
   assert.equal(controller.format(), true);
   assert.equal(editor.text, JSON.stringify({ payload: nested }, null, 2));
+  assert.deepEqual(editor.selection, { from: 0, to: 0 });
 
   assert.equal(controller.minify(), true);
   assert.equal(editor.text, JSON.stringify({ payload: nested }));

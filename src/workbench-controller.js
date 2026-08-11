@@ -48,10 +48,10 @@ export function createWorkbenchController({
     }
   }
 
-  function applyDocumentOperation(operation, successMessage) {
+  function applyDocumentOperation(operation, successMessage, selection) {
     try {
       const text = operation(editor.getText());
-      editor.replaceDocument(text);
+      editor.replaceDocument(text, selection);
       setWarnings([]);
       setStatus(successMessage, 'success');
       return true;
@@ -100,7 +100,7 @@ export function createWorkbenchController({
     },
 
     format() {
-      return applyDocumentOperation(formatJson, '已格式化 JSON');
+      return applyDocumentOperation(formatJson, '已格式化 JSON', { from: 0, to: 0 });
     },
 
     minify() {
