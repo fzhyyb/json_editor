@@ -74,7 +74,30 @@ beforeEach(() => {
   copyImplementation = () => false;
 });
 
-test('clipboard exceptions keep valid output and become normal copy failures', () => {
+test('parsing and copying are separate actions', () => {
+  let copyCalls = 0;
+  copyImplementation = () => {
+    copyCalls += 1;
+    return true;
+  };
+  elements.source.value = JSON.stringify({ data: JSON.stringify({ id: 1 }) });
+
+  elements['run-button'].dispatch('click');
+
+  assert.equal(copyCalls, 0);
+  assert.equal(elements.result.textContent, JSON.stringify({ data: { id: 1 } }, null, 2));
+  assert.equal(elements.status.textContent, '已展开 1 个字段');
+  assert.equal(elements.status.dataset.kind, 'success');
+  assert.equal(elements['copy-button'].disabled, false);
+
+  elements['copy-button'].dispatch('click');
+
+  assert.equal(copyCalls, 1);
+  assert.equal(elements.status.textContent, '已复制结果');
+  assert.equal(elements.status.dataset.kind, 'success');
+});
+
+test('clipboard exceptions only affect an explicit copy action', () => {
   copyImplementation = () => {
     throw new Error('clipboard unavailable');
   };
@@ -82,11 +105,11 @@ test('clipboard exceptions keep valid output and become normal copy failures', (
 
   assert.doesNotThrow(() => elements['run-button'].dispatch('click'));
   assert.equal(elements.result.textContent, JSON.stringify({ data: { id: 1 } }, null, 2));
-  assert.equal(elements.status.textContent, '已展开 1 个字段，请手动复制');
-  assert.equal(elements.status.dataset.kind, 'warning');
+  assert.equal(elements.status.textContent, '已展开 1 个字段');
+  assert.equal(elements.status.dataset.kind, 'success');
 
   assert.doesNotThrow(() => elements['copy-button'].dispatch('click'));
-  assert.equal(elements.status.textContent, '无法自动复制，请手动复制结果');
+  assert.equal(elements.status.textContent, '复制失败，请手动复制结果');
   assert.equal(elements.status.dataset.kind, 'warning');
 });
 
@@ -115,8 +138,12 @@ test('outer parse errors preserve the previous result and its warnings', () => {
   assert.equal(elements.status.dataset.kind, 'error');
 });
 
-test('successful copying still announces incomplete expansion as a warning', () => {
-  copyImplementation = () => true;
+test('successful parsing still announces incomplete expansion as a warning without copying', () => {
+  let copyCalls = 0;
+  copyImplementation = () => {
+    copyCalls += 1;
+    return true;
+  };
   const input = {
     data: JSON.stringify({ id: 1 }),
     payload: '{broken}',
@@ -131,8 +158,9 @@ test('successful copying still announces incomplete expansion as a warning', () 
   );
   assert.equal(
     elements.status.textContent,
-    '已展开 1 个字段，其中 1 个路径未能完全展开，已复制',
+    '已展开 1 个字段，其中 1 个路径未能完全展开',
   );
+  assert.equal(copyCalls, 0);
   assert.equal(elements.status.dataset.kind, 'warning');
   assert.equal(elements['warning-panel'].hidden, false);
   assert.deepEqual(

@@ -38,7 +38,7 @@ function copyResult() {
 
   const copied = safeCopyText(result.textContent);
   setStatus(
-    copied ? '已复制结果' : '无法自动复制，请手动复制结果',
+    copied ? '已复制结果' : '复制失败，请手动复制结果',
     copied ? 'success' : 'warning',
   );
   return copied;
@@ -57,7 +57,6 @@ function processSource() {
     copyButton.disabled = false;
     renderWarnings(unwrapped.warnings);
 
-    const copied = safeCopyText(unwrapped.text);
     const detail = unwrapped.expandedCount === 0
       ? '未发现可展开的嵌套 JSON 字符串'
       : `已展开 ${unwrapped.expandedCount} 个字段`;
@@ -65,8 +64,8 @@ function processSource() {
       ? `，其中 ${unwrapped.warnings.length} 个路径未能完全展开`
       : '';
     setStatus(
-      `${detail}${warningDetail}${copied ? '，已复制' : '，请手动复制'}`,
-      unwrapped.warnings.length > 0 || !copied ? 'warning' : 'success',
+      `${detail}${warningDetail}`,
+      unwrapped.warnings.length > 0 ? 'warning' : 'success',
     );
   } catch (error) {
     const message = error instanceof JsonInputError

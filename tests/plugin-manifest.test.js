@@ -31,7 +31,7 @@ test('copied-text command matches JSON container starts but rejects unrelated te
       type: 'regex',
       label: '递归解构 JSON',
       minLength: 2,
-      maxLength: 100000,
+      maxLength: Number.MAX_SAFE_INTEGER,
     },
   );
 

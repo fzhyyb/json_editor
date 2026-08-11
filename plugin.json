@@ -16,7 +16,7 @@
           "label": "递归解构 JSON",
           "match": "/^\\s*(?:\\\\*\")*[\\[{]/",
           "minLength": 2,
-          "maxLength": 100000
+          "maxLength": 9007199254740991
         }
       ]
     }

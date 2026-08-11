@@ -32,6 +32,39 @@ test('maps malformed outer JSON to INVALID_OUTER_JSON', () => {
   );
 });
 
+test('repairs unsupported escapes inside outer JSON strings', () => {
+  const result = unwrapJsonText(String.raw`{"url":"https://example.com?a=1\&b=2"}`);
+
+  assert.deepEqual(result.value, { url: 'https://example.com?a=1&b=2' });
+  assert.equal(result.expandedCount, 0);
+  assert.deepEqual(result.warnings, []);
+});
+
+test('repairs unsupported escapes while expanding nested JSON strings', () => {
+  const nested = String.raw`{"url":"https://example.com?a=1\&b=2"}`;
+  const result = unwrapJsonText(JSON.stringify({ payload: nested }));
+
+  assert.deepEqual(result.value, {
+    payload: { url: 'https://example.com?a=1&b=2' },
+  });
+  assert.equal(result.expandedCount, 1);
+  assert.deepEqual(result.warnings, []);
+});
+
+test('keeps all valid JSON escape sequences unchanged', () => {
+  const expected = {
+    quote: '"',
+    slash: '/',
+    backslash: '\\',
+    controls: '\b\f\n\r\t',
+    unicode: '中',
+  };
+
+  const result = unwrapJsonText(JSON.stringify(expected));
+
+  assert.deepEqual(result.value, expected);
+});
+
 test('recursively expands stringified containers at every level', () => {
   const input = JSON.stringify({
     data: JSON.stringify({

@@ -19,6 +19,70 @@ function isJsonContainerCandidate(value) {
   return firstCharacter === '{' || firstCharacter === '[';
 }
 
+function repairUnsupportedJsonEscapes(text) {
+  const chunks = [];
+  let inString = false;
+  let unchangedStart = 0;
+  let repairedCount = 0;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+
+    if (!inString) {
+      if (character === '"') {
+        inString = true;
+      }
+      continue;
+    }
+
+    if (character === '"') {
+      inString = false;
+      continue;
+    }
+
+    if (character !== '\\') {
+      continue;
+    }
+
+    const nextCharacter = text[index + 1];
+    const isSimpleEscape = '"\\/bfnrt'.includes(nextCharacter);
+    const isUnicodeEscape = nextCharacter === 'u'
+      && /^[0-9a-fA-F]{4}$/.test(text.slice(index + 2, index + 6));
+
+    if (isSimpleEscape) {
+      index += 1;
+      continue;
+    }
+    if (isUnicodeEscape) {
+      index += 5;
+      continue;
+    }
+
+    chunks.push(text.slice(unchangedStart, index));
+    unchangedStart = index + 1;
+    repairedCount += 1;
+  }
+
+  if (repairedCount === 0) {
+    return null;
+  }
+
+  chunks.push(text.slice(unchangedStart));
+  return chunks.join('');
+}
+
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch (strictError) {
+    const repaired = repairUnsupportedJsonEscapes(text);
+    if (repaired === null) {
+      throw strictError;
+    }
+    return JSON.parse(repaired);
+  }
+}
+
 function childPath(parent, key, isArray) {
   if (isArray) {
     return `${parent}[${key}]`;
@@ -99,7 +163,7 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
 
   let parsed;
   try {
-    parsed = JSON.parse(input);
+    parsed = parseJson(input);
   } catch (error) {
     throw new JsonInputError(
       'INVALID_OUTER_JSON',
@@ -118,7 +182,7 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
     }
 
     try {
-      parsed = JSON.parse(parsed);
+      parsed = parseJson(parsed);
       expandedCount += 1;
     } catch (error) {
       throw new JsonInputError(
@@ -149,7 +213,7 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
     if (isCandidate) {
       let nested;
       try {
-        nested = JSON.parse(value);
+        nested = parseJson(value);
       } catch {
         warnings.push({
           code: 'INVALID_NESTED_JSON',
