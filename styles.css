@@ -5,8 +5,10 @@
   --border: #d9deea;
   --text: #172033;
   --muted: #667085;
+  --placeholder: #667085;
   --primary: #5b5bd6;
   --primary-hover: #4747bd;
+  --on-primary: #fff;
   --success: #14804a;
   --warning: #a15c00;
   --warning-bg: #fff7e6;
@@ -21,8 +23,10 @@
     --border: #343b4a;
     --text: #f1f4f9;
     --muted: #a9b1c1;
+    --placeholder: #a9b1c1;
     --primary: #8585ef;
     --primary-hover: #9b9bf4;
+    --on-primary: #11141b;
     --success: #57c78b;
     --warning: #f4b860;
     --warning-bg: #302617;
@@ -52,7 +56,7 @@ button {
   border: 1px solid var(--primary);
   border-radius: 8px;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -84,10 +88,8 @@ button:disabled {
   opacity: 0.48;
 }
 
-button:focus-visible,
-textarea:focus-visible,
-pre:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--focus) 48%, transparent);
+button:focus-visible {
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -155,6 +157,10 @@ h1 {
   background: var(--surface);
 }
 
+.pane:focus-within {
+  box-shadow: inset 0 0 0 3px var(--focus);
+}
+
 .pane-label {
   display: block;
   padding: 10px 14px;
@@ -169,11 +175,14 @@ textarea,
 pre {
   display: block;
   width: 100%;
+  height: clamp(360px, calc(100vh - 150px), 720px);
   min-height: 360px;
+  max-height: 720px;
   margin: 0;
   padding: 14px;
   overflow: auto;
   border: 0;
+  outline: none;
   background: transparent;
   color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
@@ -186,12 +195,11 @@ pre {
 
 textarea {
   resize: vertical;
-  outline: none;
 }
 
 textarea::placeholder {
-  color: var(--muted);
-  opacity: 0.72;
+  color: var(--placeholder);
+  opacity: 1;
 }
 
 .warning-panel {
@@ -236,6 +244,8 @@ textarea::placeholder {
 
   textarea,
   pre {
+    height: clamp(260px, 45vh, 520px);
     min-height: 260px;
+    max-height: 520px;
   }
 }
