@@ -30,10 +30,12 @@ macOS 使用 `Command+Enter` 执行、`Command+Shift+C` 复制结果；Windows/L
 - [ ] 完成 Windows 基本冒烟测试；若暂时无法验证，在发布说明中明确注明。
 - [x] 备齐 Logo、一句话简介、版本说明和用户手册。
 - [ ] 备齐截图。
-- [x] 版本号遵循语义化版本规范（SemVer）。
+- [x] `package.json` 中的版本号 `1.0.0` 符合语义化版本规范（SemVer）；UPXS 包及应用市场中的版本号仍待生成/发布时核验。
 
 ## 当前验证状态
 
-- 自动化证据：`npm test` 共 19 项通过、0 项失败、0 项跳过；发布构建成功且目录仅包含清单中的 7 个运行时文件；源码与发布版清单入口/Logo 路径有效；运行时与构建 JavaScript 语法检查、`git diff --check`、代表性命令行探针均通过；发布文件未发现网络、持久化、分析接口或明显密钥。
+- 自动化证据基于提交 `9e6f823`，验证日期为 2026-08-11：`npm test` 共 19 项通过、0 项失败、0 项跳过；发布构建成功且目录仅包含清单中的 7 个运行时文件；源码与发布版清单入口/Logo 路径有效；运行时与构建 JavaScript 语法检查及 `git diff --check` 均通过。
+- 代表性命令行探针调用 `unwrapJsonText` 检查了：顶层及字段内的多层 JSON 字符串展开、输入 `{"outer":{"bad":"{\"x\":]"}}` 时的 `$.outer.bad` 嵌套错误路径、`"42"`/`"true"`/`"null"`/`"hello"` 等字段字符串保持不变，以及 `maxDepth: 1` 时在 `$.a` 报告深度限制。
+- 安全检查仅为对发布文件进行有限的静态字符串/API 检查：未发现网络、持久化、分析接口或明显密钥模式；该结果不等同于完整安全审计。
 - 已生成发布目录：`release/utools-json-unwrapper`。
-- 本机只读检查发现 `/Applications/uTools.app`，但尚未实际验证 uTools 开发者工具挂载、uTools 中的自动剪贴板行为、macOS/Windows 运行时冒烟、UPXS 生成与安装、截图，以及账号提交与审核。
+- 本机只读检查发现 `/Applications/uTools.app`，但尚未实际验证 uTools 开发者工具挂载、uTools 中的自动剪贴板行为、macOS/Windows 运行时冒烟、UPXS 生成与安装（含 UPXS/应用市场版本号）、截图，以及账号提交与审核。
