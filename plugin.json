@@ -12,8 +12,9 @@
         "JSON 解构",
         "递归解析 JSON",
         {
-          "type": "over",
+          "type": "regex",
           "label": "递归解构 JSON",
+          "match": "^\\s*(?:\\\\*\")*[\\[{]",
           "minLength": 2,
           "maxLength": 100000
         }

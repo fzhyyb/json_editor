@@ -48,14 +48,20 @@ npm test
 
 ## 接入 uTools
 
-打开 uTools 开发者工具，创建或接入项目时选择项目根目录下的 `plugin.json`。分别验证功能指令入口、复制文本入口、自动处理、复制结果、警告路径、快捷键以及深浅主题。
+源码开发时，打开 uTools 开发者工具，创建或接入项目并选择项目根目录下的 `plugin.json`。分别验证功能指令入口、复制文本入口、自动处理、复制结果、警告路径、快捷键以及深浅主题。
 
 ## 打包 UPXS
 
-在 uTools 开发者工具中确认版本号为 `1.0.0`，仅保留插件运行所需文件，然后按“打包为离线安装包”流程生成 UPXS。安装该离线包，完成目标平台的基本冒烟测试后再提交发布。
+先在项目根目录生成干净的发布目录：
+
+```bash
+npm run build:release
+```
+
+该命令会替换 `release/utools-json-unwrapper`，并只放入 `plugin.json`、页面、样式、运行时 JavaScript 和 PNG Logo，不包含测试、开发文档或 SVG 源文件。在 uTools 开发者工具中选择 `release/utools-json-unwrapper/plugin.json`，确认版本号为 `1.0.0`，再按“打包为离线安装包”流程生成 UPXS。安装该离线包，完成目标平台的基本冒烟测试后再提交发布。
 
 ## 发布到应用市场
 
-应用名称、简介、首版说明、截图方案和提交检查项见 [`docs/marketplace.md`](docs/marketplace.md)。准备 Logo、介绍、版本说明、用户手册和截图，在 uTools 开发者工具中填写发布信息并提交审核；只有审核通过后，插件才会进入应用市场。
+应用名称、简介、首版说明、截图方案和提交检查项见 [`docs/marketplace.md`](docs/marketplace.md)。发布前重新运行 `npm run build:release`，在 uTools 开发者工具中选择 `release/utools-json-unwrapper` 目录，准备 Logo、介绍、版本说明、用户手册和截图，填写发布信息并提交审核；只有审核通过后，插件才会进入应用市场。
 
 隐私说明见 [`docs/privacy.md`](docs/privacy.md)。
