@@ -1,60 +1,124 @@
 export class JsonInputError extends Error {
-  constructor(message, code) {
-    super(message);
+  constructor(code, message, cause) {
+    super(message, { cause });
     this.name = 'JsonInputError';
     this.code = code;
   }
 }
 
 function isContainer(value) {
-  return typeof value === 'object' && value !== null;
+  return value !== null && typeof value === 'object';
 }
 
-function isCandidate(value) {
+function isJsonContainerCandidate(value) {
   if (typeof value !== 'string') {
     return false;
   }
 
-  const firstCharacter = value.trim()[0];
+  const firstCharacter = value.trimStart()[0];
   return firstCharacter === '{' || firstCharacter === '[';
 }
 
-export function unwrapJsonText(input) {
-  let root;
+function childPath(parent, key, isArray) {
+  return isArray ? `${parent}[${key}]` : `${parent}.${key}`;
+}
 
+export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
+  if (!Number.isInteger(maxDepth) || maxDepth < 0) {
+    throw new TypeError('maxDepth 必须是非负整数');
+  }
+
+  let parsed;
   try {
-    root = JSON.parse(input);
-  } catch {
-    throw new JsonInputError('外层 JSON 格式无效', 'INVALID_OUTER_JSON');
+    parsed = JSON.parse(input);
+  } catch (error) {
+    throw new JsonInputError(
+      'INVALID_OUTER_JSON',
+      `外层 JSON 解析失败：${error.message}`,
+      error,
+    );
   }
 
-  if (!isContainer(root)) {
-    throw new JsonInputError('外层 JSON 必须是对象或数组', 'OUTER_NOT_CONTAINER');
-  }
-
-  const value = Array.isArray(root) ? [...root] : { ...root };
   let expandedCount = 0;
-
-  for (const [key, fieldValue] of Object.entries(value)) {
-    if (!isCandidate(fieldValue)) {
-      continue;
+  for (let depth = 0; typeof parsed === 'string' && isJsonContainerCandidate(parsed); depth += 1) {
+    if (depth >= maxDepth) {
+      throw new JsonInputError(
+        'OUTER_DEPTH_LIMIT',
+        `外层字符串解析超过最大深度 ${maxDepth}`,
+      );
     }
 
     try {
-      const parsedValue = JSON.parse(fieldValue);
-      if (isContainer(parsedValue)) {
-        value[key] = parsedValue;
-        expandedCount += 1;
-      }
-    } catch {
-      // Nested parse failures are intentionally ignored in the baseline parser.
+      parsed = JSON.parse(parsed);
+      expandedCount += 1;
+    } catch (error) {
+      throw new JsonInputError(
+        'INVALID_OUTER_JSON',
+        `外层 JSON 字符串解析失败：${error.message}`,
+        error,
+      );
     }
   }
 
+  if (!isContainer(parsed)) {
+    throw new JsonInputError('OUTER_NOT_CONTAINER', '输入必须是 JSON 对象或数组');
+  }
+
+  const warnings = [];
+
+  function visit(value, path, depth) {
+    if (typeof value === 'string' && isJsonContainerCandidate(value)) {
+      let nested;
+      try {
+        nested = JSON.parse(value);
+      } catch {
+        warnings.push({
+          code: 'INVALID_NESTED_JSON',
+          path,
+          message: '疑似 JSON 的字符串无法解析',
+        });
+        return value;
+      }
+
+      if (isContainer(nested)) {
+        expandedCount += 1;
+        return visit(nested, path, depth);
+      }
+      return value;
+    }
+
+    if (!isContainer(value)) {
+      return value;
+    }
+
+    if (depth >= maxDepth) {
+      warnings.push({
+        code: 'DEPTH_LIMIT',
+        path,
+        message: `已达到最大递归深度 ${maxDepth}`,
+      });
+      return value;
+    }
+
+    const isArray = Array.isArray(value);
+    const output = isArray ? [] : {};
+    for (const key of Object.keys(value)) {
+      const childValue = visit(value[key], childPath(path, key, isArray), depth + 1);
+      Object.defineProperty(output, key, {
+        value: childValue,
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
+    }
+    return output;
+  }
+
+  const value = visit(parsed, '$', 0);
   return {
     value,
     text: JSON.stringify(value, null, 2),
     expandedCount,
-    warnings: [],
+    warnings,
   };
 }
