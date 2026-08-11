@@ -86,6 +86,34 @@ test('keeps malformed nested candidates and reports their path', () => {
   ]);
 });
 
+test('uses escaped bracket notation for warning paths with unsafe object keys', () => {
+  const input = JSON.stringify({
+    'a.b': '{broken}',
+    'quote"key': '[broken',
+    '': '{broken}',
+  });
+
+  const result = unwrapJsonText(input);
+
+  assert.deepEqual(
+    result.warnings.map(({ path }) => path),
+    ['$["a.b"]', '$["quote\\"key"]', '$[""]'],
+  );
+});
+
+test('preserves __proto__ as an own enumerable JSON property without prototype pollution', () => {
+  const input = '{"__proto__":{"polluted":true}}';
+  const expected = JSON.parse(input);
+
+  const result = unwrapJsonText(input);
+
+  assert.equal(Object.hasOwn(result.value, '__proto__'), true);
+  assert.equal(Object.prototype.propertyIsEnumerable.call(result.value, '__proto__'), true);
+  assert.equal(Object.getPrototypeOf(result.value), Object.prototype);
+  assert.equal(result.value.polluted, undefined);
+  assert.deepEqual(JSON.parse(result.text), expected);
+});
+
 test('preserves empty containers, Unicode, Emoji, backslashes, and escaped newlines', () => {
   const expected = {
     emptyObject: {},

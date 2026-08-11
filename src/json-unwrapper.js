@@ -20,7 +20,13 @@ function isJsonContainerCandidate(value) {
 }
 
 function childPath(parent, key, isArray) {
-  return isArray ? `${parent}[${key}]` : `${parent}.${key}`;
+  if (isArray) {
+    return `${parent}[${key}]`;
+  }
+
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)
+    ? `${parent}.${key}`
+    : `${parent}[${JSON.stringify(key)}]`;
 }
 
 export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
