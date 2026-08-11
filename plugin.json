@@ -1,0 +1,23 @@
+{
+  "logo": "assets/logo.png",
+  "main": "index.html",
+  "pluginSetting": {
+    "height": 620
+  },
+  "features": [
+    {
+      "code": "json-unwrapper",
+      "explain": "递归展开被转义的 JSON 对象和数组",
+      "cmds": [
+        "JSON 解构",
+        "递归解析 JSON",
+        {
+          "type": "over",
+          "label": "递归解构 JSON",
+          "minLength": 2,
+          "maxLength": 100000
+        }
+      ]
+    }
+  ]
+}
