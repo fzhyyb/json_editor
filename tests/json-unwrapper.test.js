@@ -146,6 +146,49 @@ test('retains containers at maxDepth and reports the stopped path', () => {
   ]);
 });
 
+test('does not parse or count candidate strings at maxDepth', () => {
+  const original = JSON.stringify({ b: 1 });
+  const input = JSON.stringify({ a: original });
+
+  const result = unwrapJsonText(input, { maxDepth: 1 });
+
+  assert.equal(result.value.a, original);
+  assert.equal(result.expandedCount, 0);
+  assert.deepEqual(result.warnings, [
+    {
+      code: 'DEPTH_LIMIT',
+      path: '$.a',
+      message: '已达到最大递归深度 1',
+    },
+  ]);
+});
+
+test('serializes a retained 12,000-level array subtree without recursive overflow', () => {
+  const nestedDepth = 12_000;
+  const input = `${'['.repeat(nestedDepth)}1${']'.repeat(nestedDepth)}`;
+
+  const result = unwrapJsonText(input, { maxDepth: 5 });
+
+  assert.deepEqual(result.warnings, [
+    {
+      code: 'DEPTH_LIMIT',
+      path: '$[0][0][0][0][0]',
+      message: '已达到最大递归深度 5',
+    },
+  ]);
+
+  let originalCursor = result.value;
+  let serializedCursor = JSON.parse(result.text);
+  for (let depth = 0; depth < nestedDepth; depth += 1) {
+    assert.equal(originalCursor.length, 1);
+    assert.equal(serializedCursor.length, 1);
+    originalCursor = originalCursor[0];
+    serializedCursor = serializedCursor[0];
+  }
+  assert.equal(originalCursor, 1);
+  assert.equal(serializedCursor, 1);
+});
+
 test('rejects a top-level valid primitive string', () => {
   assert.throws(
     () => unwrapJsonText('"123"'),
