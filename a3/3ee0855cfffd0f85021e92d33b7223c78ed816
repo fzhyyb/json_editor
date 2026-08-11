@@ -1,0 +1,23 @@
+src/workbench-controller.js
+  s_0791df9bfaeb83::t_08116201f6c9bc 51,54,103
+tests/app.test.js
+  s_0791df9bfaeb83::t_7028af73cfa383 141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a33ee0855cfffd0f85021e92d33b7223c78ed816",
+  "prompts": {},
+  "sessions": {
+    "s_0791df9bfaeb83": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fefe8-73e2-7cd1-a287-a8c8606e982a",
+        "model": "unknown"
+      },
+      "human_author": "feizihan <feizihan@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
