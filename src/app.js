@@ -25,10 +25,18 @@ function renderWarnings(items) {
   warningPanel.hidden = items.length === 0;
 }
 
+function safeCopyText(text) {
+  try {
+    return adapter.copyText(text);
+  } catch {
+    return false;
+  }
+}
+
 function copyResult() {
   if (!result.textContent) return false;
 
-  const copied = adapter.copyText(result.textContent);
+  const copied = safeCopyText(result.textContent);
   setStatus(
     copied ? '已复制结果' : '无法自动复制，请手动复制结果',
     copied ? 'success' : 'warning',
@@ -49,7 +57,7 @@ function processSource() {
     copyButton.disabled = false;
     renderWarnings(unwrapped.warnings);
 
-    const copied = adapter.copyText(unwrapped.text);
+    const copied = safeCopyText(unwrapped.text);
     const detail = unwrapped.expandedCount === 0
       ? '未发现可展开的嵌套 JSON 字符串'
       : `已展开 ${unwrapped.expandedCount} 个字段`;
@@ -58,7 +66,6 @@ function processSource() {
       copied ? 'success' : 'warning',
     );
   } catch (error) {
-    renderWarnings([]);
     const message = error instanceof JsonInputError
       ? error.message
       : '处理失败，请检查输入';
