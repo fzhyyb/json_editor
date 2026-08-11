@@ -22,11 +22,18 @@ macOS 使用 `Command+Enter` 执行、`Command+Shift+C` 复制结果；Windows/L
 
 ## 提交检查清单
 
-- [ ] 运行 `npm test` 并确认全部测试通过。
-- [ ] 运行 `npm run build:release` 重新生成发布目录。
-- [ ] 确认 `release/utools-json-unwrapper` 只包含 `plugin.json`、`index.html`、`styles.css`、`src/app.js`、`src/json-unwrapper.js`、`src/utools-adapter.js` 和 `assets/logo.png`。
+- [x] 运行 `npm test` 并确认全部测试通过。
+- [x] 运行 `npm run build:release` 重新生成发布目录。
+- [x] 确认 `release/utools-json-unwrapper` 只包含 `plugin.json`、`index.html`、`styles.css`、`src/app.js`、`src/json-unwrapper.js`、`src/utools-adapter.js` 和 `assets/logo.png`。
 - [ ] 在 uTools 开发者工具中选择 `release/utools-json-unwrapper` 目录进行打包或发布。
 - [ ] 完成 macOS 基本冒烟测试。
 - [ ] 完成 Windows 基本冒烟测试；若暂时无法验证，在发布说明中明确注明。
-- [ ] 备齐 Logo、一句话简介、版本说明、用户手册和截图。
-- [ ] 版本号遵循语义化版本规范（SemVer）。
+- [x] 备齐 Logo、一句话简介、版本说明和用户手册。
+- [ ] 备齐截图。
+- [x] 版本号遵循语义化版本规范（SemVer）。
+
+## 当前验证状态
+
+- 自动化证据：`npm test` 共 19 项通过、0 项失败、0 项跳过；发布构建成功且目录仅包含清单中的 7 个运行时文件；源码与发布版清单入口/Logo 路径有效；运行时与构建 JavaScript 语法检查、`git diff --check`、代表性命令行探针均通过；发布文件未发现网络、持久化、分析接口或明显密钥。
+- 已生成发布目录：`release/utools-json-unwrapper`。
+- 本机只读检查发现 `/Applications/uTools.app`，但尚未实际验证 uTools 开发者工具挂载、uTools 中的自动剪贴板行为、macOS/Windows 运行时冒烟、UPXS 生成与安装、截图，以及账号提交与审核。
