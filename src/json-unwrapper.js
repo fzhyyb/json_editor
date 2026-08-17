@@ -191,9 +191,9 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
   try {
     parsed = parseJsonValue(input);
   } catch (strictError) {
+    let decoded;
     try {
-      parsed = parseJsonValue(decodeNakedEscapedJsonText(input));
-      expandedCount += 1;
+      decoded = decodeNakedEscapedJsonText(input);
     } catch {
       throw new JsonInputError(
         'INVALID_OUTER_JSON',
@@ -201,6 +201,14 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
         strictError,
       );
     }
+    if (maxDepth === 0) {
+      throw new JsonInputError(
+        'OUTER_DEPTH_LIMIT',
+        `外层字符串解析超过最大深度 ${maxDepth}`,
+      );
+    }
+    parsed = parseJsonValue(decoded);
+    expandedCount += 1;
   }
 
   for (let depth = 0; typeof parsed === 'string' && isJsonContainerCandidate(parsed); depth += 1) {

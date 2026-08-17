@@ -55,6 +55,16 @@ test('restores naked escaped JSON arrays', () => {
   assert.deepEqual(unwrapJsonText(naked).value, [{ id: 1 }, { id: 2 }]);
 });
 
+test('naked escaped outer layers respect the outer depth limit', () => {
+  const original = JSON.stringify({ ok: true });
+  const naked = JSON.stringify(original).slice(1, -1);
+
+  assert.throws(
+    () => unwrapJsonText(naked, { maxDepth: 0 }),
+    (error) => error instanceof JsonInputError && error.code === 'OUTER_DEPTH_LIMIT',
+  );
+});
+
 test('naked escaped JSON decoding is limited to valid container strings', () => {
   const original = JSON.stringify({ text: '路径 C:\\temp', quote: '他说"好"' });
   const naked = JSON.stringify(original).slice(1, -1);

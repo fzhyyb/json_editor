@@ -22,7 +22,7 @@ Add tests that import `decodeNakedEscapedJsonText` and assert:
 
 ```js
 const original = JSON.stringify({ mode: 'A', pass: true });
-const naked = original.replaceAll('"', '\\"');
+const naked = JSON.stringify(original).slice(1, -1);
 assert.equal(decodeNakedEscapedJsonText(naked), original);
 assert.deepEqual(unwrapJsonText(naked).value, { mode: 'A', pass: true });
 ```
