@@ -1,4 +1,8 @@
-import { parseJsonValue, serializeJsonValue } from './json-unwrapper.js';
+import {
+  decodeNakedEscapedJsonText,
+  parseJsonValue,
+  serializeJsonValue,
+} from './json-unwrapper.js';
 
 export function formatJson(text) {
   return serializeJsonValue(parseJsonValue(text));
@@ -13,7 +17,16 @@ export function escapeJson(text) {
 }
 
 export function unescapeJson(text) {
-  const value = JSON.parse(text);
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch (strictError) {
+    try {
+      return decodeNakedEscapedJsonText(text);
+    } catch {
+      throw strictError;
+    }
+  }
   if (typeof value !== 'string') {
     throw new TypeError('去转义目标必须是 JSON 字符串');
   }

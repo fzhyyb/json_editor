@@ -50,6 +50,17 @@ test('escape and unescape apply exactly one JSON string layer', () => {
   assert.equal(escapeJson(escaped), '"\\"{\\\\\\"a\\\\\\":1}\\""');
 });
 
+test('unescape restores a naked escaped JSON container', () => {
+  const original = JSON.stringify({
+    mode: 'A',
+    pass: true,
+    check_items: [{ id: '1', status: '提醒' }],
+  });
+  const naked = JSON.stringify(original).slice(1, -1);
+
+  assert.equal(unescapeJson(naked), original);
+});
+
 test('unescape rejects values that are not JSON strings', () => {
   assert.throws(
     () => unescapeJson('{"a":1}'),

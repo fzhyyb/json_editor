@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { JsonInputError, unwrapJsonText } from '../src/json-unwrapper.js';
+import {
+  decodeNakedEscapedJsonText,
+  JsonInputError,
+  unwrapJsonText,
+} from '../src/json-unwrapper.js';
 
 test('formats an outer JSON object without expanding fields', () => {
   const result = unwrapJsonText('{"name":"小明","active":true}');
@@ -23,6 +27,48 @@ test('expands a single stringified object field', () => {
     expandedCount: 1,
     warnings: [],
   });
+});
+
+test('restores a naked escaped JSON object before recursive expansion', () => {
+  const original = JSON.stringify({
+    mode: 'A',
+    pass: true,
+    payload: JSON.stringify({ ok: true }),
+  });
+  const naked = JSON.stringify(original).slice(1, -1);
+
+  const result = unwrapJsonText(naked);
+
+  assert.deepEqual(result.value, {
+    mode: 'A',
+    pass: true,
+    payload: { ok: true },
+  });
+  assert.equal(result.expandedCount, 2);
+  assert.deepEqual(result.warnings, []);
+});
+
+test('restores naked escaped JSON arrays', () => {
+  const original = JSON.stringify([{ id: 1 }, { id: 2 }]);
+  const naked = JSON.stringify(original).slice(1, -1);
+
+  assert.deepEqual(unwrapJsonText(naked).value, [{ id: 1 }, { id: 2 }]);
+});
+
+test('naked escaped JSON decoding is limited to valid container strings', () => {
+  const original = JSON.stringify({ text: '路径 C:\\temp', quote: '他说"好"' });
+  const naked = JSON.stringify(original).slice(1, -1);
+
+  assert.equal(decodeNakedEscapedJsonText(`  ${naked}  `), original);
+
+  for (const input of [
+    'ordinary prose',
+    String.raw`{\"a\":1`,
+    String.raw`{\"a\":broken}`,
+    '{"a":1}',
+  ]) {
+    assert.throws(() => decodeNakedEscapedJsonText(input));
+  }
 });
 
 test('maps malformed outer JSON to INVALID_OUTER_JSON', () => {

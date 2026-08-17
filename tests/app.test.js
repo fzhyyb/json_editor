@@ -104,6 +104,23 @@ test('full-document paste is intercepted and automatically parsed', () => {
   assert.deepEqual(editor.selection, { from: 0, to: 0 });
 });
 
+test('naked escaped JSON is automatically restored on paste and uTools entry', () => {
+  const value = {
+    mode: 'A',
+    pass: true,
+    check_items: [{ id: '1', status: '提醒' }],
+  };
+  const naked = JSON.stringify(JSON.stringify(value)).slice(1, -1);
+
+  assert.equal(controller.handlePaste(naked), true);
+  assert.equal(editor.text, JSON.stringify(value, null, 2));
+  assert.deepEqual(editor.selection, { from: 0, to: 0 });
+
+  editor.text = '';
+  assert.equal(controller.handleTextEntry(naked), true);
+  assert.equal(editor.text, JSON.stringify(value, null, 2));
+});
+
 test('default whole-document paste can be parsed after clipboardData is unavailable', () => {
   const payload = JSON.stringify(JSON.stringify({
     task_id: '7672091721177517688',

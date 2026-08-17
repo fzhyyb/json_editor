@@ -82,6 +82,22 @@ export function parseJsonValue(text) {
   }
 }
 
+export function decodeNakedEscapedJsonText(input) {
+  const text = input.trim();
+  const isBoundedContainer = (text.startsWith('{') && text.endsWith('}'))
+    || (text.startsWith('[') && text.endsWith(']'));
+  if (!isBoundedContainer) {
+    throw new TypeError('输入不是裸转义 JSON 对象或数组');
+  }
+
+  const decoded = JSON.parse(`"${text}"`);
+  const value = parseJsonValue(decoded);
+  if (!isContainer(value)) {
+    throw new TypeError('裸转义内容必须还原为 JSON 对象或数组');
+  }
+  return decoded;
+}
+
 export function serializeJsonValue(
   value,
   { pretty = true, prettyDepth = Number.MAX_SAFE_INTEGER } = {},
@@ -171,17 +187,22 @@ export function unwrapJsonText(input, { maxDepth = 100 } = {}) {
   }
 
   let parsed;
+  let expandedCount = 0;
   try {
     parsed = parseJsonValue(input);
-  } catch (error) {
-    throw new JsonInputError(
-      'INVALID_OUTER_JSON',
-      `外层 JSON 解析失败：${error.message}`,
-      error,
-    );
+  } catch (strictError) {
+    try {
+      parsed = parseJsonValue(decodeNakedEscapedJsonText(input));
+      expandedCount += 1;
+    } catch {
+      throw new JsonInputError(
+        'INVALID_OUTER_JSON',
+        `外层 JSON 解析失败：${strictError.message}`,
+        strictError,
+      );
+    }
   }
 
-  let expandedCount = 0;
   for (let depth = 0; typeof parsed === 'string' && isJsonContainerCandidate(parsed); depth += 1) {
     if (depth >= maxDepth) {
       throw new JsonInputError(
